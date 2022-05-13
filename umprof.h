@@ -14,8 +14,6 @@
 #define UMPROF_STRING_LENGTH 2048
 #endif
 
-#define UMPROF_STEP_SIZE 512
-
 typedef enum {
 	EventCall,
 	EventReturn,
@@ -63,7 +61,7 @@ int umprofEventCap;
 
 static void umprofAddEvent(UmprofEventType type, const char *name) {
 	if (umprofEventCount == umprofEventCap) {
-		umprofEventCap += UMPROF_STEP_SIZE;
+		umprofEventCap *= 2;
 		umprofEvents = realloc(umprofEvents, umprofEventCap * sizeof(UmprofEvent));
 		if (umprofEvents == NULL)
 			fprintf(stderr, "umprof: oom\n");
@@ -86,9 +84,9 @@ void umprofInit(void *umka) {
 	umkaSetHook(umka, UMKA_HOOK_CALL, umprofCallHook);
 	umkaSetHook(umka, UMKA_HOOK_RETURN, umprofReturnHook);
 
-	umprofEvents = malloc(sizeof(UmprofEvent) * UMPROF_STEP_SIZE);
+	umprofEvents = malloc(sizeof(UmprofEvent) * 512);
 	umprofEventCount = 0;
-	umprofEventCap = UMPROF_STEP_SIZE;
+	umprofEventCap = 512;
 }
 
 static UmprofInfo *umprofGetFunc(UmprofEventParser *par, const char *name) {
