@@ -16,10 +16,14 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	FILE *of = stdout;
+	bool json = 0;
 
 	int argoff = 1;
 	for (; argoff < argc-1; argoff++) {
 		if (argv[argoff][0] != '-') break;
+
+		if (strcmp(argv[argoff], "-j") == 0)
+			json = 1;
 
 		if (strcmp(argv[argoff], "-o") == 0) {
 			if (argoff == argc - 1) {
@@ -56,9 +60,13 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	UmprofInfo info[2048] = {0};
-	int len = umprofGetInfo(info, 2048);
-	umprofPrintInfo(of, info, len);
+	if (json) {
+		umprofPrintEventsJSON(of);
+	} else {
+		UmprofInfo info[2048] = {0};
+		int len = umprofGetInfo(info, 2048);
+		umprofPrintInfo(of, info, len);
+	}
 
 	if (of != stdout) fclose(of);
 

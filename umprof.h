@@ -171,5 +171,22 @@ void umprofPrintInfo(FILE *f, UmprofInfo *arr, int arrlen) {
 #undef MAX_FUNC_NAME
 }
 
+void umprofPrintEventsJSON(FILE *f) {
+	const float start = (float)umprofEvents[0].clock / CLOCKS_PER_SEC * 1000000 - 1;
+	printf("%f\n", start);
+
+	fprintf(f, "[\n");
+
+	for (int i=0; i < umprofEventCount; ++i)
+		fprintf(f,
+			"\t{\"cat\": \"function\", \"name\": \"%s\", \"ph\": \"%s\","
+			" \"pid\": 0, \"tid\": 0, \"ts\": %f},\n",
+			umprofEvents[i].name,
+			umprofEvents[i].type == EventCall ? "B" : "E",
+			(float)umprofEvents[i].clock / CLOCKS_PER_SEC * 1000000 - start);
+
+	fprintf(f, "]\n");
+}
+
 #endif // UMPROF_IMPL
 #endif // !UMPROF_H
