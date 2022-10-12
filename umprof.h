@@ -173,17 +173,17 @@ void umprofPrintInfo(FILE *f, UmprofInfo *arr, int arrlen) {
 
 void umprofPrintEventsJSON(FILE *f) {
 	const float start = (float)umprofEvents[0].clock / CLOCKS_PER_SEC * 1000000 - 1;
-	printf("%f\n", start);
 
-	fprintf(f, "[\n");
+	fprintf(f, "[");
 
 	for (int i=0; i < umprofEventCount; ++i)
 		fprintf(f,
-			"\t{\"cat\": \"function\", \"name\": \"%s\", \"ph\": \"%s\","
-			" \"pid\": 0, \"tid\": 0, \"ts\": %f},\n",
+			"{\"cat\":\"function\",\"name\":\"%s\",\"ph\":\"%s\","
+			"\"pid\":0,\"tid\":0,\"ts\":%f}%s",
 			umprofEvents[i].name,
 			umprofEvents[i].type == EventCall ? "B" : "E",
-			(float)umprofEvents[i].clock / CLOCKS_PER_SEC * 1000000 - start);
+			(float)umprofEvents[i].clock / CLOCKS_PER_SEC * 1000000 - start,
+			i < umprofEventCount - 1 ? "," : "");
 
 	fprintf(f, "]\n");
 }
