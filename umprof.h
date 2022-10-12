@@ -179,7 +179,7 @@ void umprofPrintEventsJSON(FILE *f) {
 	for (int i=0; i < umprofEventCount; ++i)
 		fprintf(f,
 			"{\"cat\":\"function\",\"name\":\"%s\",\"ph\":\"%s\","
-			"\"pid\":0,\"tid\":0,\"ts\":%f}%s",
+			"\"pid\":0,\"tid\":0,\"ts\":%g}%s",
 			umprofEvents[i].name,
 			umprofEvents[i].type == EventCall ? "B" : "E",
 			(float)umprofEvents[i].clock / CLOCKS_PER_SEC * 1000000 - start,
