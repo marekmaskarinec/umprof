@@ -53,6 +53,12 @@ int umprofGetInfo(UmprofInfo *output, int maxInfo);
 // Prints a table made from arr into the file f.
 void umprofPrintInfo(FILE *f, UmprofInfo *arr, int arrlen);
 
+// Exports the events in google JSON profiling format.
+void umprofPrintEventsJSON(FILE *f);
+
+// Free memory allocated by umprof
+void umprofDeinit(void);
+
 #ifdef UMPROF_IMPL
 
 UmprofEvent *umprofEvents = NULL;
@@ -186,6 +192,10 @@ void umprofPrintEventsJSON(FILE *f) {
 			i < umprofEventCount - 1 ? "," : "");
 
 	fprintf(f, "]\n");
+}
+
+void umprofDeinit(void) {
+	free(umprofEvents);
 }
 
 #endif // UMPROF_IMPL
