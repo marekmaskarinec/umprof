@@ -6,13 +6,47 @@
 #ifndef UMPROF_H
 #define UMPROF_H
 
-#include <time.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <string.h>
+#include <stdio.h>
 
 // maximum length of a function name
 #ifndef UMPROF_STRING_LENGTH
 #define UMPROF_STRING_LENGTH 2048
 #endif
+
+#ifdef _WIN32
+typedef LONGLONG UmprofClock;
+
+static long long umprofClockFrequency() {
+	LARGE_INTEGER freq;
+	QueryPerformanceFrequency(&freq);
+	return freq.QuadPart;
+}
+
+static UmprofClock umprofClock() {
+	LARGE_INTEGER clock;
+	QueryPerformanceCounter(&clock);
+	return clock.QuadPart;
+}
+#else
+#include <time.h>
+typedef long long UmprofClock;
+
+static long long umprofClockFrequency() {
+	return CLOCKS_PER_SEC;
+}
+
+static UmprofClock umprofClock() {
+	return clock();
+}
+#endif
+
+static long long umprofClockToMicroseconds(UmprofClock clock, long long freq) {
+	return clock * 1000000 / freq;
+}
 
 typedef enum {
 	EventCall,
@@ -22,7 +56,7 @@ typedef enum {
 // Stores either a function call or a return
 typedef struct {
 	UmprofEventType type;
-	clock_t clock;
+	UmprofClock clock;
 	const char *name;
 } UmprofEvent;
 
@@ -30,8 +64,8 @@ typedef struct {
 typedef struct {
 	const char *name;
 	int callCount;
-	clock_t clock;
-	clock_t clockSelf;
+	UmprofClock clock;
+	UmprofClock clockSelf;
 	float percent;
 	float percentSelf;
 } UmprofInfo;
@@ -74,7 +108,7 @@ static void umprofAddEvent(UmprofEventType type, const char *name) {
 	}
 
 	umprofEvents[umprofEventCount++] = (UmprofEvent){
-		.type = type, .name = name, .clock = clock() };
+		.type = type, .name = name, .clock = umprofClock() };
 }
 
 static void umprofCallHook(const char *filename, const char *funcName, int line) {
@@ -109,15 +143,15 @@ static UmprofInfo *umprofGetFunc(UmprofEventParser *par, const char *name) {
 }
 
 static UmprofEvent *umprofParseEvent(UmprofEventParser *par, UmprofInfo *out, UmprofEvent *in) {
-	clock_t noRec = out->clock;
-	clock_t noRecSelf = out->clockSelf;
-	clock_t notSelf = 0;
+	UmprofClock noRec = out->clock;
+	UmprofClock noRecSelf = out->clockSelf;
+	UmprofClock notSelf = 0;
 	UmprofEvent *p = in + 1;
 	while (p && p->type != EventReturn) {
 		UmprofInfo *info = umprofGetFunc(par, p->name);
 		if (!info) return 0;
 
-		clock_t offset = info->clock;
+		UmprofClock offset = info->clock;
 		p = umprofParseEvent(par, info, p);
 		if (p == NULL) return p;
 		notSelf += info->clock - offset;
@@ -143,7 +177,7 @@ int umprofGetInfo(UmprofInfo *output, int maxInfo) {
 	if (!umprofParseEvent(&par, main, &umprofEvents[0]))
 		return 0;
 
-	clock_t total = umprofEvents[umprofEventCount-1].clock - umprofEvents[0].clock;
+	UmprofClock total = umprofEvents[umprofEventCount-1].clock - umprofEvents[0].clock;
 	
 	for (int i=0; i < par.arrlen; i++) {
 		par.arr[i].percent = par.arr[i].clock / (float)total;
@@ -167,7 +201,7 @@ void umprofPrintInfo(FILE *f, UmprofInfo *arr, int arrlen) {
 	fprintf(f, "\n");
 
 	for (int i=0; i < arrlen; i++) {
-		fprintf(f, "%*d%*f%*f%*ld%*ld%*s\n", MAX_NUMBER, arr[i].callCount,
+		fprintf(f, "%*d%*f%*f%*lld%*lld%*s\n", MAX_NUMBER, arr[i].callCount,
 			MAX_FLOAT, arr[i].percent, MAX_FLOAT, arr[i].percentSelf,
 			MAX_NUMBER, arr[i].clock, MAX_NUMBER, arr[i].clockSelf,
 			MAX_FUNC_NAME, arr[i].name);
@@ -178,17 +212,18 @@ void umprofPrintInfo(FILE *f, UmprofInfo *arr, int arrlen) {
 }
 
 void umprofPrintEventsJSON(FILE *f) {
-	const float start = (float)umprofEvents[0].clock / CLOCKS_PER_SEC * 1000000 - 1;
+	long long freq = umprofClockFrequency();
+	const long long start = umprofClockToMicroseconds(umprofEvents[0].clock, freq) - 1;
 
 	fprintf(f, "[");
 
 	for (int i=0; i < umprofEventCount; ++i)
 		fprintf(f,
 			"{\"cat\":\"function\",\"name\":\"%s\",\"ph\":\"%s\","
-			"\"pid\":0,\"tid\":0,\"ts\":%g}%s",
+			"\"pid\":0,\"tid\":0,\"ts\":%lli}%s",
 			umprofEvents[i].name,
 			umprofEvents[i].type == EventCall ? "B" : "E",
-			(float)umprofEvents[i].clock / CLOCKS_PER_SEC * 1000000 - start,
+			umprofClockToMicroseconds(umprofEvents[i].clock, freq) - start,
 			i < umprofEventCount - 1 ? "," : "");
 
 	fprintf(f, "]\n");
