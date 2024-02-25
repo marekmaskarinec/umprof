@@ -1,16 +1,25 @@
 
-#include <stdlib.h>
-#include <stdio.h>
 #include "umka-lang/src/umka_api.h"
+#include <stdio.h>
+#include <stdlib.h>
 #define UMPROF_IMPL
 #include "umprof.h"
 
-
-void printHelp() {
-	printf("Umprof - a simple umka profiler.\numprof [ -o output-file ] source-file\n");
+static void
+printHelp()
+{
+	printf("Umprof - a simple umka profiler.\numprof [ -j ] [ -o output-file ] source-file\n");
 }
 
-int main(int argc, char *argv[]) {
+static void
+warningCallback(UmkaError *warn)
+{
+	fprintf(stderr, "Warning: %s:%d: %s\n", warn->fileName, warn->line, warn->msg);
+}
+
+int
+main(int argc, char *argv[])
+{
 	if (argc < 2) {
 		printHelp();
 		return 1;
@@ -19,8 +28,9 @@ int main(int argc, char *argv[]) {
 	bool json = 0;
 
 	int argoff = 1;
-	for (; argoff < argc-1; argoff++) {
-		if (argv[argoff][0] != '-') break;
+	for (; argoff < argc - 1; argoff++) {
+		if (argv[argoff][0] != '-')
+			break;
 
 		if (strcmp(argv[argoff], "-j") == 0)
 			json = 1;
@@ -42,22 +52,26 @@ int main(int argc, char *argv[]) {
 	}
 
 	void *umka = umkaAlloc();
-	if (!umkaInit(umka, argv[argoff], NULL, 0, 1024 * 1024, NULL, argc - argoff, argv + argoff))
+	if (!umkaInit(umka, argv[argoff], NULL, 1024 * 1024, NULL, argc - argoff, argv + argoff,
+		true, true, warningCallback))
 		return 1;
 	umprofInit(umka);
 
 	if (!umkaCompile(umka)) {
 		UmkaError error;
 		umkaGetError(umka, &error);
-		fprintf(stderr, "Error %s (%d, %d): %s\n", error.fileName, error.line, error.pos, error.msg);
+		fprintf(stderr, "Error %s (%d, %d): %s\n", error.fileName, error.line, error.pos,
+		    error.msg);
 		return 1;
 	}
 
-	if (!umkaRun(umka)) {
-    UmkaError error;
-    umkaGetError(umka, &error);
-    fprintf(stderr, "\nRuntime error %s (%d): %s\n", error.fileName, error.line, error.msg);
-		return 1;
+	int exitCode = umkaRun(umka);
+	if (exitCode != 0) {
+		UmkaError error;
+		umkaGetError(umka, &error);
+		fprintf(
+		    stderr, "\nRuntime error %s (%d): %s\n", error.fileName, error.line, error.msg);
+		return exitCode;
 	}
 
 	if (json) {
@@ -68,7 +82,8 @@ int main(int argc, char *argv[]) {
 		umprofPrintInfo(of, info, len);
 	}
 
-	if (of != stdout) fclose(of);
+	if (of != stdout)
+		fclose(of);
 
 	return 0;
 }
