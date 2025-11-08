@@ -58,19 +58,17 @@ main(int argc, char *argv[])
 	umprofInit(umka);
 
 	if (!umkaCompile(umka)) {
-		UmkaError error;
-		umkaGetError(umka, &error);
-		fprintf(stderr, "Error %s (%d, %d): %s\n", error.fileName, error.line, error.pos,
-		    error.msg);
+		UmkaError *error = umkaGetError(umka);
+		fprintf(stderr, "Error %s (%d, %d): %s\n", error->fileName, error->line, error->pos,
+		    error->msg);
 		return 1;
 	}
 
 	int exitCode = umkaRun(umka);
 	if (exitCode != 0) {
-		UmkaError error;
-		umkaGetError(umka, &error);
-		fprintf(
-		    stderr, "\nRuntime error %s (%d): %s\n", error.fileName, error.line, error.msg);
+		UmkaError *error = umkaGetError(umka);
+		fprintf(stderr, "\nRuntime error %s (%d): %s\n", error->fileName, error->line,
+		    error->msg);
 		return exitCode;
 	}
 
